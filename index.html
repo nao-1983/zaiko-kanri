@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="在庫管理">
+<title>在庫管理システム</title>
+<style>
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f5f5f4;
+    color: #1c1917;
+    overflow-x: hidden;
+  }
+  input, select, textarea {
+    font-size: 16px !important; /* iOSの自動ズーム防止 */
+    font-family: inherit;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  button:active {
+    transform: scale(0.97);
+  }
+
+  /* === 認証画面 === */
+  .auth-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: #1c1917;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-card {
+    background: white;
+    border: 2px solid #f59e0b;
+    max-width: 420px;
+    width: 100%;
+    padding: 40px;
+  }
+  .auth-card h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-family: monospace;
+  }
+  .auth-card .accent {
+    height: 6px;
+    width: 64px;
+    background: #f59e0b;
+    margin-bottom: 32px;
+  }
+  .auth-card p {
+    color: #44403c;
+    margin-bottom: 20px;
+  }
+  .auth-card input {
+    width: 100%;
+    padding: 16px 20px;
+    border: 2px solid #d6d3d1;
+    font-family: monospace;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .auth-card input:focus {
+    border-color: #1c1917;
+  }
+  .auth-card input.error {
+    border-color: #dc2626;
+  }
+  .auth-card .error-msg {
+    color: #dc2626;
+    font-size: 14px;
+    font-family: monospace;
+    margin-bottom: 12px;
+  }
+  .auth-card button {
+    width: 100%;
+    background: #1c1917;
+    color: #f59e0b;
+    border: none;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: monospace;
+  }
+  .auth-card button:disabled {
+    background: #d6d3d1;
+    color: #78716c;
+  }
+  .auth-footer {
+    color: #a8a29e;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 24px;
+    font-family: monospace;
+  }
+
+  /* === ヘッダー === */
+  header {
+    background: #1c1917;
+    color: #f5f5f4;
+    border-bottom: 4px solid #f59e0b;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+  .header-main {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-title .icon {
+    font-size: 32px;
+    color: #f59e0b;
+  }
+  .header-title h1 {
+    margin: 0;
+    font-size: 20px;
+    font-family: monospace;
+  }
+  .header-title .subtitle {
+    font-size: 12px;
+    color: #a8a29e;
+    font-family: monospace;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .user-badge {
+    font-size: 14px;
+    font-family: monospace;
+    color: #d6d3d1;
+    background: #292524;
+    padding: 10px 12px;
+    border: 1px solid #44403c;
+  }
+  .user-badge .label {
+    color: #78716c;
+  }
+  .user-badge .change-btn {
+    margin-left: 8px;
+    color: #f59e0b;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+  }
+  .header-btn {
+    background: #292524;
+    color: #f5f5f4;
+    border: 1px solid #44403c;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-bar {
+    background: #292524;
+    padding: 10px 20px;
+    display: flex;
+    gap: 24px;
+    font-size: 14px;
+    font-family: monospace;
+    flex-wrap: wrap;
+  }
+  .status-bar .label {
+    color: #78716c;
+  }
+  .status-bar .value {
+    color: #f59e0b;
+    font-weight: bold;
+  }
+  .status-bar .alert {
+    color: #f87171;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sync-status {
+    color: #4ade80;
+    font-size: 12px;
+    font-family: monospace;
+  }
+  .sync-status.offline {
+    color: #f87171;
+  }
+
+  /* === メイン === */
+  main {
+    padding: 16px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 14px 16px 14px 48px;
+    border: 2px solid #d6d3d1;
+    font-family: monospace;
+    background: white;
+    outline: none;
+  }
+  .search-box input:focus {
+    border-color: #1c1917;
+  }
+  .search-box .icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a8a29e;
+    pointer-events: none;
+  }
+  .add-btn {
+    background: #f59e0b;
+    color: #1c1917;
+    border: 2px solid #1c1917;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* === カテゴリタブ === */
+  .category-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .category-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: monospace;
+    white-space: nowrap;
+    border: 2px solid #d6d3d1;
+    background: white;
+    color: #44403c;
+  }
+  .category-tab.active {
+    background: #1c1917;
+    color: #f59e0b;
+    border-color: #1c1917;
+  }
+
+  /* === 在庫リスト === */
+  .empty-state {
+    background: white;
+    border: 2px dashed #d6d3d1;
+    padding: 64px 16px;
+    text-align: center;
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    color: #d6d3d1;
+    margin-bottom: 16px;
+  }
+  .empty-state p {
+    color: #78716c;
+    font-family: monospace;
+    margin: 0;
+  }
+
+  .item-list {
+    display: grid;
+    gap: 12px;
+  }
+  .item-card {
+    background: white;
+    border: 2px solid #d6d3d1;
+    display: flex;
+    align-items: stretch;
+  }
+  .item-card.low-stock {
+    border-color: #ef4444;
+  }
+  .item-category {
+    background: #1c1917;
+    color: #f59e0b;
+    padding: 12px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+  }
+  .item-category span {
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: bold;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 0.1em;
+  }
+  .item-photo {
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+    background: #f5f5f4;
+    overflow: hidden;
+    border-right: 2px solid #d6d3d1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    padding: 0;
+  }
+  .item-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .item-photo.no-photo {
+    color: #d6d3d1;
+    font-size: 32px;
+  }
+  .item-content {
+    flex: 1;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 16px;
+    align-items: center;
+  }
+  @media (max-width: 768px) {
+    .item-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  .item-info {
+    min-width: 0;
+  }
+  .item-name {
+    font-weight: bold;
+    color: #1c1917;
+    font-size: 18px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .low-stock-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 12px;
+    padding: 2px 8px;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .item-maker {
+    font-size: 14px;
+    color: #b45309;
+    font-family: monospace;
+    margin: 2px 0 0 0;
+    font-weight: bold;
+  }
+  .item-spec {
+    font-size: 14px;
+    color: #57534e;
+    font-family: monospace;
+    margin: 2px 0 0 0;
+  }
+  .item-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #78716c;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+  .qty-btn {
+    width: 56px;
+    height: 56px;
+    background: #e7e5e4;
+    border: 2px solid #d6d3d1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  .qty-btn.minus:active {
+    background: #fed7aa;
+    border-color: #f97316;
+  }
+  .qty-btn.plus:active {
+    background: #bbf7d0;
+    border-color: #22c55e;
+  }
+  .qty-display {
+    text-align: center;
+    min-width: 90px;
+  }
+  .qty-num {
+    font-size: 30px;
+    font-weight: bold;
+    font-family: monospace;
+    color: #1c1917;
+  }
+  .qty-num.low {
+    color: #dc2626;
+  }
+  .qty-unit {
+    font-size: 12px;
+    color: #78716c;
+    font-family: monospace;
+  }
+  .item-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .action-btn {
+    width: 48px;
+    height: 48px;
+    background: #f5f5f4;
+    border: 2px solid #d6d3d1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .action-btn.edit:active {
+    background: #1c1917;
+    color: #f59e0b;
+  }
+  .action-btn.delete:active {
+    background: #ef4444;
+    color: white;
+  }
+
+  /* === 履歴 === */
+  .history-panel {
+    background: white;
+    border: 2px solid #1c1917;
+    margin-bottom: 16px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .history-header {
+    background: #1c1917;
+    color: #f5f5f4;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+  }
+  .history-header h3 {
+    margin: 0;
+    font-family: monospace;
+  }
+  .history-header button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+  }
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-family: monospace;
+  }
+  .history-table thead {
+    background: #f5f5f4;
+    position: sticky;
+    top: 48px;
+  }
+  .history-table th {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid #d6d3d1;
+  }
+  .history-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f5f5f4;
+  }
+  .history-table tr:hover {
+    background: #fafaf9;
+  }
+  .action-tag {
+    padding: 4px 10px;
+  }
+  .action-tag.in { background: #dcfce7; color: #166534; }
+  .action-tag.out { background: #ffedd5; color: #9a3412; }
+  .action-tag.new { background: #dbeafe; color: #1e40af; }
+  .action-tag.del { background: #fee2e2; color: #991b1b; }
+  .action-tag.edit { background: #f5f5f4; color: #44403c; }
+
+  /* === モーダル === */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 25, 23, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 9999;
+    overscroll-behavior: contain;
+    touch-action: none;
+  }
+  .modal-content {
+    background: white;
+    border: 2px solid #1c1917;
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100dvh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    background: #1c1917;
+    color: #f5f5f4;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .modal-header h2 {
+    margin: 0;
+    font-family: monospace;
+    font-size: 18px;
+  }
+  .modal-header button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    padding: 4px;
+  }
+  .modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+  }
+  .modal-footer {
+    background: white;
+    border-top: 2px solid #e7e5e4;
+    padding: 12px 20px;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .form-row {
+    margin-bottom: 16px;
+  }
+  .form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    color: #44403c;
+    margin-bottom: 6px;
+    font-family: monospace;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #d6d3d1;
+    font-family: monospace;
+    background: white;
+    outline: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: #1c1917;
+  }
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 600px) {
+    .form-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* 写真 */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .photo-btn {
+    border: 2px dashed #a8a29e;
+    padding: 16px;
+    background: #fafaf9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .photo-btn .icon {
+    font-size: 32px;
+    color: #57534e;
+  }
+  .photo-btn span {
+    font-size: 14px;
+    font-weight: bold;
+    color: #44403c;
+    font-family: monospace;
+  }
+  .photo-preview {
+    position: relative;
+    display: inline-block;
+  }
+  .photo-preview img {
+    max-height: 160px;
+    border: 2px solid #d6d3d1;
+    display: block;
+  }
+  .photo-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #ef4444;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .photo-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .photo-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #f5f5f4;
+    border: 2px solid #d6d3d1;
+    font-size: 14px;
+    font-family: monospace;
+  }
+
+  .submit-btn {
+    flex: 1;
+    background: #1c1917;
+    color: #f59e0b;
+    border: none;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .cancel-btn {
+    padding: 16px 32px;
+    background: white;
+    color: #1c1917;
+    border: 2px solid #1c1917;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: monospace;
+  }
+
+  /* 写真拡大表示 */
+  .photo-viewer {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 10000;
+  }
+  .photo-viewer img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .photo-viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 24px;
+  }
+
+  /* ローディング */
+  .loading-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f4;
+  }
+  .loading-text {
+    color: #57534e;
+    font-family: monospace;
+    font-size: 18px;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- 認証画面 -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+      <span style="font-size:40px;">🔒</span>
+      <div>
+        <h2>在庫管理システム</h2>
+        <div style="font-size:12px; color:#78716c; font-family:monospace;">AUTHENTICATION REQUIRED</div>
+      </div>
+    </div>
+    <div class="accent"></div>
+    <p>合言葉を入力してください</p>
+    <input type="password" id="pwInput" placeholder="合言葉" autofocus>
+    <div id="pwError" class="error-msg hidden">合言葉が違います</div>
+    <button id="pwSubmit" disabled>ログイン</button>
+    <div class="auth-footer">社内専用システム / Authorized Personnel Only</div>
+  </div>
+</div>
+
+<!-- ローディング -->
+<div id="loadingScreen" class="loading-screen hidden">
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<!-- 名前入力 -->
+<div id="namePrompt" class="auth-screen hidden" style="background:#f5f5f4;">
+  <div class="auth-card" style="border-color:#1c1917;">
+    <h2 style="font-size:28px;">在庫管理システム</h2>
+    <div class="accent"></div>
+    <p style="font-size:18px;">あなたの名前を入力してください<br>
+      <span style="font-size:14px; color:#78716c;">(履歴に記録されます)</span>
+    </p>
+    <input type="text" id="nameInput" placeholder="例: 山田" autofocus>
+    <button id="nameSubmit" style="background:#1c1917; color:white;" disabled>開始</button>
+  </div>
+</div>
+
+<!-- メインアプリ -->
+<div id="mainApp" class="hidden">
+  <header>
+    <div class="header-main">
+      <div class="header-title">
+        <span class="icon">📦</span>
+        <div>
+          <h1>在庫管理システム</h1>
+          <div class="subtitle">INVENTORY CONTROL</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="user-badge">
+          <span class="label">USER:</span> <span id="userNameDisplay"></span>
+          <button class="change-btn" id="changeNameBtn">変更</button>
+        </div>
+        <button class="header-btn" id="historyBtn">📜 履歴</button>
+        <button class="header-btn" id="csvBtn">⬇️ CSV</button>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div><span class="label">登録品目:</span> <span class="value" id="itemCount">0</span></div>
+      <div><span class="label">総数量:</span> <span class="value" id="totalQty">0</span></div>
+      <div id="lowStockAlert" class="alert hidden">⚠️ 在庫不足: <span id="lowStockCount">0</span>件</div>
+      <div id="syncStatus" class="sync-status">🟢 同期中</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 履歴パネル -->
+    <div id="historyPanel" class="history-panel hidden">
+      <div class="history-header">
+        <h3>操作履歴 (直近200件)</h3>
+        <button id="closeHistoryBtn">✕</button>
+      </div>
+      <div id="historyContent"></div>
+    </div>
+
+    <!-- 検索 + 新規登録 -->
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="品名・メーカー・規格・場所で検索...">
+      </div>
+      <button class="add-btn" id="addBtn">➕ 新規登録</button>
+    </div>
+
+    <!-- カテゴリタブ -->
+    <div class="category-tabs" id="categoryTabs"></div>
+
+    <!-- 在庫リスト -->
+    <div id="itemList"></div>
+  </main>
+</div>
+
+<!-- 写真拡大 -->
+<div id="photoViewer" class="photo-viewer hidden">
+  <button class="photo-viewer-close" id="closePhotoBtn">✕</button>
+  <img id="viewerImg" src="" alt="">
+</div>
+
+<!-- 入力フォームモーダル -->
+<div id="formModal" class="modal-overlay hidden">
+  <div class="modal-content" id="modalContent">
+    <div class="modal-header">
+      <h2 id="modalTitle">新規登録</h2>
+      <button id="closeModalBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- 写真 -->
+      <div class="form-row">
+        <label class="form-label">写真</label>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+        <input type="file" id="albumInput" accept="image/*" style="display:none;">
+
+        <div id="photoPreview" class="hidden">
+          <div class="photo-preview">
+            <img id="previewImg" src="" alt="プレビュー">
+            <button class="photo-remove" id="removePhotoBtn">✕</button>
+          </div>
+          <div class="photo-actions">
+            <button class="photo-action-btn" id="retakeCameraBtn">📷 撮り直す</button>
+            <button class="photo-action-btn" id="retakeAlbumBtn">📁 別の写真を選ぶ</button>
+          </div>
+        </div>
+
+        <div id="photoButtons" class="photo-grid">
+          <button class="photo-btn" id="cameraBtn">
+            <span class="icon">📷</span>
+            <span>カメラで撮影</span>
+          </button>
+          <button class="photo-btn" id="albumBtn">
+            <span class="icon">📁</span>
+            <span>アルバムから選択</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">品名 *</label>
+        <input type="text" id="formName" class="form-input" placeholder="例: IV2.0mm 黒">
+      </div>
+
+      <div class="form-row form-grid-2">
+        <div>
+          <label class="form-label">カテゴリ *</label>
+          <select id="formCategory" class="form-select"></select>
+        </div>
+        <div>
+          <label class="form-label">メーカー</label>
+          <input type="text" id="formMaker" class="form-input" placeholder="例: パナソニック">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">規格・サイズ</label>
+        <input type="text" id="formSpec" class="form-input" placeholder="例: 22sq / M10×50 / 16φ">
+      </div>
+
+      <div class="form-row form-grid-3">
+        <div>
+          <label class="form-label">数量</label>
+          <input type="number" id="formQuantity" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">単位</label>
+          <select id="formUnit" class="form-select">
+            <option value="本">本</option>
+            <option value="個">個</option>
+            <option value="m">m</option>
+            <option value="束">束</option>
+            <option value="箱">箱</option>
+            <option value="巻">巻</option>
+            <option value="袋">袋</option>
+            <option value="セット">セット</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">最低在庫</label>
+          <input type="number" id="formMinStock" class="form-input" min="0" value="0" placeholder="アラート">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">保管場所</label>
+        <input type="text" id="formLocation" class="form-input" placeholder="例: 倉庫A棚3">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">備考</label>
+        <textarea id="formNote" class="form-textarea" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="submit-btn" id="submitBtn">💾 <span id="submitText">登録</span></button>
+      <button class="cancel-btn" id="cancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, onSnapshot,
+    addDoc, updateDoc, deleteDoc, setDoc, getDoc,
+    query, orderBy, limit, serverTimestamp, writeBatch
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ============================================
+  // 🔑 合言葉
+  // ============================================
+  const APP_PASSWORD = "tasuku";
+
+  // ============================================
+  // Firebase 設定
+  // ============================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyCLRsGq3B2UO0biK8Ba529noCS09-e7aIM",
+    authDomain: "zaiko-kanri-da727.firebaseapp.com",
+    projectId: "zaiko-kanri-da727",
+    storageBucket: "zaiko-kanri-da727.firebasestorage.app",
+    messagingSenderId: "267149234206",
+    appId: "1:267149234206:web:9b579fbe192af8be3bde0f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const CATEGORIES = [
+    "電線", "配線器具", "ボルト類", "天井壁仕込み材",
+    "配管支持材", "支持母材", "VE管材", "E管材", "C管材",
+    "G管材", "PF/PFD管材", "FEP材", "メカフレキ材",
+    "プリカ材", "防水プリカ材", "装柱材", "雑材"
+  ];
+
+  // ============================================
+  // 状態管理
+  // ============================================
+  let items = [];
+  let history = [];
+  let userName = localStorage.getItem("inventory_user_name") || "";
+  let editingId = null;
+  let activeCategory = "すべて";
+  let searchQuery = "";
+  let currentPhoto = "";
+
+  // ============================================
+  // 認証
+  // ============================================
+  const pwInput = document.getElementById("pwInput");
+  const pwSubmit = document.getElementById("pwSubmit");
+  const pwError = document.getElementById("pwError");
+
+  pwInput.addEventListener("input", () => {
+    pwSubmit.disabled = !pwInput.value;
+    pwError.classList.add("hidden");
+    pwInput.classList.remove("error");
+  });
+  pwInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") pwSubmit.click();
+  });
+  pwSubmit.addEventListener("click", () => {
+    if (pwInput.value === APP_PASSWORD) {
+      localStorage.setItem("inventory_auth", APP_PASSWORD);
+      showApp();
+    } else {
+      pwError.classList.remove("hidden");
+      pwInput.classList.add("error");
+      pwInput.value = "";
+      pwSubmit.disabled = true;
+    }
+  });
+
+  // 自動認証
+  if (localStorage.getItem("inventory_auth") === APP_PASSWORD) {
+    showApp();
+  }
+
+  function showApp() {
+    document.getElementById("authScreen").classList.add("hidden");
+    if (!userName) {
+      showNamePrompt();
+    } else {
+      startMainApp();
+    }
+  }
+
+  // ============================================
+  // 名前入力
+  // ============================================
+  const nameInput = document.getElementById("nameInput");
+  const nameSubmit = document.getElementById("nameSubmit");
+
+  function showNamePrompt() {
+    document.getElementById("namePrompt").classList.remove("hidden");
+    nameInput.value = userName;
+    nameInput.focus();
+    nameSubmit.disabled = !userName.trim();
+  }
+
+  nameInput.addEventListener("input", () => {
+    nameSubmit.disabled = !nameInput.value.trim();
+  });
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") nameSubmit.click();
+  });
+  nameSubmit.addEventListener("click", () => {
+    userName = nameInput.value.trim();
+    if (!userName) return;
+    localStorage.setItem("inventory_user_name", userName);
+    document.getElementById("namePrompt").classList.add("hidden");
+    startMainApp();
+  });
+
+  // ============================================
+  // メインアプリ起動
+  // ============================================
+  function startMainApp() {
+    document.getElementById("mainApp").classList.remove("hidden");
+    document.getElementById("userNameDisplay").textContent = userName;
+    setupCategoryTabs();
+    setupCategorySelect();
+    subscribeToData();
+  }
+
+  // 名前変更
+  document.getElementById("changeNameBtn").addEventListener("click", () => {
+    document.getElementById("mainApp").classList.add("hidden");
+    showNamePrompt();
+  });
+
+  // ============================================
+  // Firestore リアルタイム同期
+  // ============================================
+  let syncTimeout = null;
+  function setSyncStatus(online) {
+    const el = document.getElementById("syncStatus");
+    if (online) {
+      el.textContent = "🟢 同期中";
+      el.classList.remove("offline");
+    } else {
+      el.textContent = "🔴 接続エラー";
+      el.classList.add("offline");
+    }
+  }
+
+  function subscribeToData() {
+    // 在庫アイテム
+    onSnapshot(
+      collection(db, "items"),
+      (snapshot) => {
+        items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        renderItems();
+        setSyncStatus(true);
+      },
+      (error) => {
+        console.error("Items subscription error:", error);
+        setSyncStatus(false);
+      }
+    );
+
+    // 履歴
+    onSnapshot(
+      query(collection(db, "history"), orderBy("createdAt", "desc"), limit(200)),
+      (snapshot) => {
+        history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderHistory();
+      },
+      (error) => {
+        console.error("History subscription error:", error);
+      }
+    );
+  }
+
+  // ============================================
+  // データ操作
+  // ============================================
+  async function addItem(data) {
+    try {
+      await addDoc(collection(db, "items"), {
+        ...data,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      await addHistoryEntry("新規", data.name, `${data.quantity}${data.unit}`);
+    } catch (error) {
+      console.error("Add error:", error);
+      alert("登録に失敗しました: " + error.message);
+    }
+  }
+
+  async function updateItem(id, data) {
+    try {
+      const oldItem = items.find(i => i.id === id);
+      await updateDoc(doc(db, "items", id), {
+        ...data,
+        updatedAt: Date.now(),
+      });
+      await addHistoryEntry("編集", data.name, `${oldItem.quantity}${oldItem.unit} → ${data.quantity}${data.unit}`);
+    } catch (error) {
+      console.error("Update error:", error);
+      alert("更新に失敗しました: " + error.message);
+    }
+  }
+
+  async function deleteItem(id) {
+    try {
+      const item = items.find(i => i.id === id);
+      await deleteDoc(doc(db, "items", id));
+      await addHistoryEntry("削除", item.name, `${item.quantity}${item.unit}`);
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("削除に失敗しました: " + error.message);
+    }
+  }
+
+  async function changeQuantity(id, delta) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const newQty = Math.max(0, (item.quantity || 0) + delta);
+    if (newQty === item.quantity) return;
+    try {
+      await updateDoc(doc(db, "items", id), {
+        quantity: newQty,
+        updatedAt: Date.now(),
+      });
+      await addHistoryEntry(
+        delta > 0 ? "入庫" : "出庫",
+        item.name,
+        `${Math.abs(delta)}${item.unit} (残${newQty})`
+      );
+    } catch (error) {
+      console.error("Quantity error:", error);
+      alert("更新に失敗しました: " + error.message);
+    }
+  }
+
+  async function addHistoryEntry(action, itemName, detail) {
+    try {
+      await addDoc(collection(db, "history"), {
+        time: new Date().toLocaleString("ja-JP"),
+        user: userName || "不明",
+        action,
+        itemName,
+        detail,
+        createdAt: Date.now(),
+      });
+    } catch (error) {
+      console.error("History error:", error);
+    }
+  }
+
+  // ============================================
+  // UI レンダリング
+  // ============================================
+  function setupCategoryTabs() {
+    const tabs = document.getElementById("categoryTabs");
+    tabs.innerHTML = "";
+
+    const allTab = document.createElement("button");
+    allTab.className = "category-tab active";
+    allTab.dataset.category = "すべて";
+    allTab.innerHTML = `すべて (<span class="cat-count">0</span>)`;
+    tabs.appendChild(allTab);
+
+    CATEGORIES.forEach(cat => {
+      const tab = document.createElement("button");
+      tab.className = "category-tab";
+      tab.dataset.category = cat;
+      tab.innerHTML = `${cat} (<span class="cat-count">0</span>)`;
+      tabs.appendChild(tab);
+    });
+
+    tabs.addEventListener("click", (e) => {
+      const tab = e.target.closest(".category-tab");
+      if (!tab) return;
+      activeCategory = tab.dataset.category;
+      tabs.querySelectorAll(".category-tab").forEach(t =>
+        t.classList.toggle("active", t.dataset.category === activeCategory)
+      );
+      renderItems();
+    });
+  }
+
+  function setupCategorySelect() {
+    const select = document.getElementById("formCategory");
+    select.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  }
+
+  function renderItems() {
+    // ヘッダー統計
+    document.getElementById("itemCount").textContent = items.length;
+    document.getElementById("totalQty").textContent = items.reduce((s, i) => s + (i.quantity || 0), 0);
+
+    // 在庫不足
+    const lowStock = items.filter(i => i.minStock > 0 && i.quantity <= i.minStock);
+    const lowStockEl = document.getElementById("lowStockAlert");
+    if (lowStock.length > 0) {
+      lowStockEl.classList.remove("hidden");
+      document.getElementById("lowStockCount").textContent = lowStock.length;
+    } else {
+      lowStockEl.classList.add("hidden");
+    }
+
+    // カテゴリ別件数
+    document.querySelectorAll(".category-tab").forEach(tab => {
+      const cat = tab.dataset.category;
+      const count = cat === "すべて" ? items.length : items.filter(i => i.category === cat).length;
+      tab.querySelector(".cat-count").textContent = count;
+    });
+
+    // フィルター
+    const q = searchQuery.toLowerCase();
+    const filtered = items.filter(item => {
+      const matchCategory = activeCategory === "すべて" || item.category === activeCategory;
+      const matchSearch = !q ||
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.maker && item.maker.toLowerCase().includes(q)) ||
+        (item.spec && item.spec.toLowerCase().includes(q)) ||
+        (item.location && item.location.toLowerCase().includes(q));
+      return matchCategory && matchSearch;
+    });
+
+    const list = document.getElementById("itemList");
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📦</div>
+          <p>${items.length === 0 ? "在庫が登録されていません" : "該当する品目がありません"}</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = `<div class="item-list">${filtered.map(item => renderItem(item)).join("")}</div>`;
+
+    // イベント設定
+    list.querySelectorAll(".item-card").forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector(".qty-btn.minus")?.addEventListener("click", () => changeQuantity(id, -1));
+      card.querySelector(".qty-btn.plus")?.addEventListener("click", () => changeQuantity(id, 1));
+      card.querySelector(".action-btn.edit")?.addEventListener("click", () => openEditForm(id));
+      card.querySelector(".action-btn.delete")?.addEventListener("click", () => {
+        const item = items.find(i => i.id === id);
+        if (confirm(`「${item.name}」を削除しますか?`)) {
+          deleteItem(id);
+        }
+      });
+      card.querySelector(".item-photo")?.addEventListener("click", (e) => {
+        const photo = e.currentTarget.dataset.photo;
+        if (photo) openPhotoViewer(photo);
+      });
+    });
+  }
+
+  function renderItem(item) {
+    const isLow = item.minStock > 0 && item.quantity <= item.minStock;
+    const escapeHtml = (s) => String(s || "").replace(/[<>&"']/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&#39;"}[c]));
+
+    return `
+      <div class="item-card ${isLow ? "low-stock" : ""}" data-id="${item.id}">
+        <div class="item-category"><span>${escapeHtml(item.category || "")}</span></div>
+        ${item.photo ?
+          `<button class="item-photo" data-photo="${escapeHtml(item.photo)}"><img src="${escapeHtml(item.photo)}" alt=""></button>` :
+          `<div class="item-photo no-photo">🖼️</div>`
+        }
+        <div class="item-content">
+          <div class="item-info">
+            <h3 class="item-name">${escapeHtml(item.name)} ${isLow ? '<span class="low-stock-badge">⚠️ 在庫不足</span>' : ''}</h3>
+            ${item.maker ? `<p class="item-maker">🏭 ${escapeHtml(item.maker)}</p>` : ""}
+            ${item.spec ? `<p class="item-spec">${escapeHtml(item.spec)}</p>` : ""}
+            <div class="item-meta">
+              ${item.location ? `<span>📍 ${escapeHtml(item.location)}</span>` : ""}
+              ${item.minStock > 0 ? `<span>最低: ${item.minStock}${escapeHtml(item.unit)}</span>` : ""}
+              ${item.note ? `<span>📝 ${escapeHtml(item.note)}</span>` : ""}
+            </div>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn minus">➖</button>
+            <div class="qty-display">
+              <div class="qty-num ${isLow ? "low" : ""}">${item.quantity || 0}</div>
+              <div class="qty-unit">${escapeHtml(item.unit)}</div>
+            </div>
+            <button class="qty-btn plus">➕</button>
+          </div>
+          <div class="item-actions">
+            <button class="action-btn edit">✏️</button>
+            <button class="action-btn delete">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderHistory() {
+    const content = document.getElementById("historyContent");
+    if (history.length === 0) {
+      content.innerHTML = '<div style="padding:24px; text-align:center; color:#78716c;">履歴はありません</div>';
+      return;
+    }
+    const escapeHtml = (s) => String(s || "").replace(/[<>&"']/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&#39;"}[c]));
+    const actionClass = (a) => ({"入庫":"in","出庫":"out","新規":"new","削除":"del","編集":"edit"}[a] || "edit");
+
+    content.innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>日時</th><th>作業者</th><th>操作</th><th>品名</th><th>内容</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${history.map(h => `
+            <tr>
+              <td style="color:#57534e;">${escapeHtml(h.time)}</td>
+              <td style="font-weight:bold;">${escapeHtml(h.user)}</td>
+              <td><span class="action-tag ${actionClass(h.action)}">${escapeHtml(h.action)}</span></td>
+              <td>${escapeHtml(h.itemName)}</td>
+              <td style="color:#57534e;">${escapeHtml(h.detail)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ============================================
+  // 検索
+  // ============================================
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    searchQuery = e.target.value;
+    renderItems();
+  });
+
+  // ============================================
+  // 履歴 / CSV
+  // ============================================
+  document.getElementById("historyBtn").addEventListener("click", () => {
+    document.getElementById("historyPanel").classList.toggle("hidden");
+  });
+  document.getElementById("closeHistoryBtn").addEventListener("click", () => {
+    document.getElementById("historyPanel").classList.add("hidden");
+  });
+
+  document.getElementById("csvBtn").addEventListener("click", () => {
+    const header = ["品名", "カテゴリ", "メーカー", "規格", "数量", "単位", "保管場所", "最低在庫", "備考"];
+    const rows = items.map(i => [
+      i.name, i.category, i.maker || "", i.spec || "",
+      i.quantity, i.unit || "", i.location || "", i.minStock || 0, i.note || ""
+    ]);
+    const csv = [header, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `在庫_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ============================================
+  // フォーム
+  // ============================================
+  function openNewForm() {
+    editingId = null;
+    document.getElementById("modalTitle").textContent = "新規登録";
+    document.getElementById("submitText").textContent = "登録";
+    resetForm();
+    document.getElementById("formModal").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function openEditForm(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    editingId = id;
+    document.getElementById("modalTitle").textContent = "編集";
+    document.getElementById("submitText").textContent = "更新";
+    document.getElementById("formName").value = item.name || "";
+    document.getElementById("formCategory").value = item.category || CATEGORIES[0];
+    document.getElementById("formMaker").value = item.maker || "";
+    document.getElementById("formSpec").value = item.spec || "";
+    document.getElementById("formQuantity").value = item.quantity || 0;
+    document.getElementById("formUnit").value = item.unit || "本";
+    document.getElementById("formMinStock").value = item.minStock || 0;
+    document.getElementById("formLocation").value = item.location || "";
+    document.getElementById("formNote").value = item.note || "";
+    currentPhoto = item.photo || "";
+    updatePhotoUI();
+    document.getElementById("formModal").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function resetForm() {
+    document.getElementById("formName").value = "";
+    document.getElementById("formCategory").value = CATEGORIES[0];
+    document.getElementById("formMaker").value = "";
+    document.getElementById("formSpec").value = "";
+    document.getElementById("formQuantity").value = 0;
+    document.getElementById("formUnit").value = "本";
+    document.getElementById("formMinStock").value = 0;
+    document.getElementById("formLocation").value = "";
+    document.getElementById("formNote").value = "";
+    currentPhoto = "";
+    updatePhotoUI();
+  }
+
+  function closeForm() {
+    document.getElementById("formModal").classList.add("hidden");
+    document.body.style.overflow = "";
+    editingId = null;
+  }
+
+  document.getElementById("addBtn").addEventListener("click", openNewForm);
+  document.getElementById("closeModalBtn").addEventListener("click", closeForm);
+  document.getElementById("cancelBtn").addEventListener("click", closeForm);
+  document.getElementById("formModal").addEventListener("click", (e) => {
+    if (e.target.id === "formModal") closeForm();
+  });
+
+  document.getElementById("submitBtn").addEventListener("click", async () => {
+    const name = document.getElementById("formName").value.trim();
+    if (!name) {
+      alert("品名を入力してください");
+      return;
+    }
+    const data = {
+      name,
+      category: document.getElementById("formCategory").value,
+      maker: document.getElementById("formMaker").value.trim(),
+      spec: document.getElementById("formSpec").value.trim(),
+      quantity: parseInt(document.getElementById("formQuantity").value) || 0,
+      unit: document.getElementById("formUnit").value,
+      minStock: parseInt(document.getElementById("formMinStock").value) || 0,
+      location: document.getElementById("formLocation").value.trim(),
+      note: document.getElementById("formNote").value.trim(),
+      photo: currentPhoto,
+    };
+
+    if (editingId) {
+      await updateItem(editingId, data);
+    } else {
+      await addItem(data);
+    }
+    closeForm();
+  });
+
+  // ============================================
+  // 写真処理
+  // ============================================
+  function updatePhotoUI() {
+    const preview = document.getElementById("photoPreview");
+    const buttons = document.getElementById("photoButtons");
+    if (currentPhoto) {
+      preview.classList.remove("hidden");
+      buttons.classList.add("hidden");
+      document.getElementById("previewImg").src = currentPhoto;
+    } else {
+      preview.classList.add("hidden");
+      buttons.classList.remove("hidden");
+    }
+  }
+
+  function processPhoto(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxSize = 800;
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
+        } else {
+          if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        currentPhoto = canvas.toDataURL("image/jpeg", 0.7);
+        updatePhotoUI();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById("cameraBtn").addEventListener("click", () => document.getElementById("cameraInput").click());
+  document.getElementById("albumBtn").addEventListener("click", () => document.getElementById("albumInput").click());
+  document.getElementById("retakeCameraBtn").addEventListener("click", () => document.getElementById("cameraInput").click());
+  document.getElementById("retakeAlbumBtn").addEventListener("click", () => document.getElementById("albumInput").click());
+  document.getElementById("removePhotoBtn").addEventListener("click", () => {
+    currentPhoto = "";
+    updatePhotoUI();
+  });
+
+  ["cameraInput", "albumInput"].forEach(id => {
+    document.getElementById(id).addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) processPhoto(file);
+      e.target.value = "";
+    });
+  });
+
+  // ============================================
+  // 写真拡大
+  // ============================================
+  function openPhotoViewer(photo) {
+    document.getElementById("viewerImg").src = photo;
+    document.getElementById("photoViewer").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+  document.getElementById("closePhotoBtn").addEventListener("click", () => {
+    document.getElementById("photoViewer").classList.add("hidden");
+    document.body.style.overflow = "";
+  });
+  document.getElementById("photoViewer").addEventListener("click", (e) => {
+    if (e.target.id === "photoViewer") {
+      document.getElementById("photoViewer").classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+  });
+</script>
+
+</body>
+</html>
