@@ -1005,6 +1005,40 @@
   ];
 
   // ============================================
+  // 並び替え:メーカー → 規格(自然順)→ 品名
+  // 「自然順」は数字を数値として比較するので
+  // VE16 → VE22 → VE100 のように正しく並ぶ
+  // ============================================
+  const naturalCompare = (a, b) => {
+    return String(a || "").localeCompare(String(b || ""), 'ja', {
+      numeric: true,
+      sensitivity: 'base'
+    });
+  };
+
+  function compareItems(a, b) {
+    // 1. カテゴリ順(CATEGORIES配列の順番に合わせる)
+    const catA = CATEGORIES.indexOf(a.category);
+    const catB = CATEGORIES.indexOf(b.category);
+    if (catA !== catB) return catA - catB;
+
+    // 2. メーカー順(空欄は最後)
+    const makerA = a.maker || "";
+    const makerB = b.maker || "";
+    if (makerA && !makerB) return -1;
+    if (!makerA && makerB) return 1;
+    const makerCmp = naturalCompare(makerA, makerB);
+    if (makerCmp !== 0) return makerCmp;
+
+    // 3. 規格・サイズ順(自然順)
+    const specCmp = naturalCompare(a.spec, b.spec);
+    if (specCmp !== 0) return specCmp;
+
+    // 4. 品名順
+    return naturalCompare(a.name, b.name);
+  }
+
+  // ============================================
   // 状態管理
   // ============================================
   let items = [];
@@ -1121,7 +1155,7 @@
       collection(db, "items"),
       (snapshot) => {
         items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        items.sort(compareItems);
         renderItems();
         setSyncStatus(true);
       },
